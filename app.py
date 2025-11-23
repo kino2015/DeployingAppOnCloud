@@ -1,10 +1,15 @@
-# app.py
-
 import gradio as gr
 import numpy as np
 import cv2
 import onnxruntime as ort
 import os
+
+# Implements softmax function
+def softmax(x):
+    """Compute softmax values for each sets of scores in x."""
+    # 数値的な安定性のために x から最大値を引く
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0)
 
 # ----------------- モデルのロード -----------------
 # ONNXモデルのパスを定義
@@ -49,9 +54,14 @@ def recognize_digit(image_np):
     input_dict = {input_name: input_tensor}
     raw_output = session.run([output_name], input_dict)[0]
     
-    # 5. 結果の解釈
-    predicted_digit = np.argmax(raw_output)
-    confidence = np.max(raw_output)
+    # --- 修正箇所 ---
+    # 5. softmax を適用し、確率に変換
+    probabilities = softmax(raw_output.flatten())
+    
+    # 6. 結果の解釈
+    predicted_digit = np.argmax(probabilities)
+    confidence = np.max(probabilities)
+    # --------------
     
     return f"Recognized Digit: {predicted_digit}", confidence
 
@@ -71,4 +81,5 @@ interface = gr.Interface(
 
 # Gradioアプリの起動
 if __name__ == "__main__":
-    interface.launch()
+    # ローカル実行を想定
+    interface.launch(server_name="0.0.0.0", server_port=7860)

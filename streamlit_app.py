@@ -1,16 +1,27 @@
-# streamlit_app.py
-
 import streamlit as st
 import numpy as np
 import cv2 # OpenCVのインポートは必須
 import onnxruntime as ort # ONNXランタイムのインポートは必須
+import os # model.onnxの存在確認用に追加
 
-# ----------------- モデルと関数の定義 (cv_web_app.pyから移植) -----------------
+# ----------------- モデルと関数の定義 -----------------
+
+# Implements softmax function
+def softmax(x):
+    """Compute softmax values for each sets of scores in x."""
+    # 数値的な安定性のために x から最大値を引く
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0)
 
 # ONNXモデルのロード
 try:
     # 実際には、このディレクトリ内の 'model.onnx' を読み込む必要があります
     # Streamlit Cloudでは、GitHubのルートにあるファイルを相対パスで読み込みます。
+    # 念のため、モデルファイルが存在するか確認
+    if not os.path.exists("model.onnx"):
+        st.error("モデルファイル 'model.onnx' が見つかりません。")
+        st.stop()
+        
     session = ort.InferenceSession("model.onnx")
     input_name = session.get_inputs()[0].name
     output_name = session.get_outputs()[0].name
@@ -49,18 +60,22 @@ if uploaded_file is not None:
         input_dict = {input_name: input_tensor}
         raw_output = session.run([output_name], input_dict)[0]
         
-        # 予測結果の解釈
-        predicted_digit = np.argmax(raw_output)
-        confidence = np.max(raw_output)
+        # --- 修正箇所 ---
+        # 1. raw_output(Logits)にsoftmaxを適用し、確率に変換
+        probabilities = softmax(raw_output.flatten())
+        
+        # 2. 予測結果の解釈
+        predicted_digit = np.argmax(probabilities)
+        confidence = np.max(probabilities) # 修正: softmax 後の値を使用
+        # --------------
         
     # 結果の表示
     st.image(display_img, caption="Processed Image (28x28)", width=150)
     
+    # 信頼度は0-1の範囲になる
     st.success(f"Recognized Digit: {predicted_digit}")
     st.info(f"Confidence: {confidence:.4f}")
 
     # 詳細なロジスティック（オプション）
     if st.checkbox('Show Raw Predictions'):
-        st.write(raw_output)
-
-# ----------------------------------------------------
+        st.write(probabilities)
