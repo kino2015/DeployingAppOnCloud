@@ -1,0 +1,12 @@
+# .gitignore
+# 一時ファイル
+*.zip
+__pycache__/
+
+# Jupyter Notebook関連
+.ipynb_checkpoints/
+*.ipynb
+
+# 仮想環境
+venv/
+.venv/
