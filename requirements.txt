@@ -2,3 +2,5 @@ Flask
 gunicorn
 numpy
 opencv-contrib-python-headless
+streamlit   # Streamlit Share用
+onnxruntime # 必須ライブラリ
